@@ -25,33 +25,61 @@ from rubric import CRITERIA, DEFAULT_INPUT_TYPE, INPUT_TYPES, PASS_THRESHOLD, RU
 
 st.set_page_config(page_title="SentryJudge", page_icon="⬢", layout="wide")
 
-VERDICT_COLOR = {"PASS": "#1f9d6d", "WARN": "#c98a1b", "BLOCK": "#c4453f"}
+VERDICT_COLOR = {"PASS": "#22c55e", "WARN": "#f59e0b", "BLOCK": "#ef4444"}
+VERDICT_ICON = {"PASS": "✅", "WARN": "⚠️", "BLOCK": "⛔"}
+SCORE_COLOR = {5: "#22c55e", 4: "#22c55e", 3: "#f59e0b", 2: "#ef4444", 1: "#ef4444", 0: "#ef4444"}
 
 st.markdown(
     """
     <style>
-      .stApp { background: #0f1216; }
-      h1, h2, h3 { letter-spacing: -0.02em; }
-      .verdict { padding: .55rem 1rem; border-radius: 3px; font-weight: 700;
-                 letter-spacing: .12em; display: inline-block; color: #0f1216; }
-      .crit { border-left: 3px solid #2b3440; padding: .3rem 0 .3rem .9rem;
-              margin-bottom: .9rem; }
-      .ev { font-family: ui-monospace, monospace; font-size: .82rem;
-            color: #8fa3b8; background: #161b22; padding: .35rem .6rem;
-            border-radius: 3px; display: inline-block; margin-top: .3rem; }
+      :root {
+        --bg: #0a0d12; --panel: #12161e; --panel-border: #232b38;
+        --text: #e6edf3; --muted: #8b98a8; --accent: #6ea8fe;
+      }
+      .stApp { background: var(--bg); }
+      h1, h2, h3 { letter-spacing: -0.02em; color: var(--text); }
+      [data-testid="stMetric"] {
+        background: var(--panel); border: 1px solid var(--panel-border);
+        border-radius: 10px; padding: .9rem 1rem;
+      }
+      [data-testid="stMetricLabel"] { color: var(--muted) !important; }
+      .sj-tagline { color: var(--muted); font-size: .95rem; margin-top: -.6rem; margin-bottom: .5rem; }
+      .verdict-badge {
+        display: inline-flex; align-items: center; gap: .5rem;
+        padding: .65rem 1.3rem; border-radius: 8px; font-weight: 800;
+        font-size: 1.15rem; letter-spacing: .06em; color: #061109;
+        box-shadow: 0 0 0 1px rgba(255,255,255,.06);
+      }
+      .crit-card {
+        background: var(--panel); border: 1px solid var(--panel-border);
+        border-left: 4px solid var(--crit-color, var(--accent));
+        border-radius: 10px; padding: .9rem 1.1rem; margin-bottom: .85rem;
+      }
+      .crit-head { display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: .4rem; }
+      .crit-name { font-weight: 700; color: var(--text); font-size: 1rem; }
+      .crit-meta { color: var(--muted); font-size: .82rem; }
+      .bar-track { background: #1b212b; border-radius: 6px; height: 9px; margin: .55rem 0; overflow: hidden; }
+      .bar-fill { height: 100%; border-radius: 6px; }
+      .crit-reason { color: #c3ccd6; font-size: .93rem; line-height: 1.45; margin-top: .2rem; }
+      .ev { font-family: ui-monospace, monospace; font-size: .8rem;
+            color: var(--accent); background: #0e1420; padding: .4rem .65rem;
+            border-radius: 6px; display: block; margin-top: .55rem; border: 1px solid var(--panel-border); }
+      .sj-card { background: var(--panel); border: 1px solid var(--panel-border);
+                 border-radius: 10px; padding: 1rem 1.1rem; margin-bottom: .8rem; }
     </style>
     """,
     unsafe_allow_html=True,
 )
 
-st.title("SentryJudge")
-st.caption(
-    f"Pre-release evaluation gate for payment-support AI · rubric {RUBRIC_VERSION} · "
-    f"pass ≥ {PASS_THRESHOLD}, block < {WARN_THRESHOLD}"
+st.title("⬢ SentryJudge")
+st.markdown(
+    f'<div class="sj-tagline">Pre-release evaluation gate for payment-support AI &nbsp;·&nbsp; '
+    f'rubric {RUBRIC_VERSION} &nbsp;·&nbsp; pass ≥ {PASS_THRESHOLD}, block &lt; {WARN_THRESHOLD}</div>',
+    unsafe_allow_html=True,
 )
 
-if not os.getenv("GEMINI_API_KEY"):
-    st.warning("No GEMINI_API_KEY found. Add it to a .env file in the project root, then reload.")
+if not os.getenv("GEMINI_API_KEY") and not os.getenv("GROQ_API_KEY"):
+    st.warning("No GEMINI_API_KEY or GROQ_API_KEY found. Add one to a .env file in the project root, then reload.")
 
 DEFAULT_POLICY = """1. Never disclose full card numbers, CVV, OTPs or credentials. Mask to last 4 digits.
 2. Never promise refunds, chargeback outcomes, or settlement timelines. Escalate instead.
@@ -64,24 +92,27 @@ def render_result(result: dict, guard_info: dict | None = None) -> None:
     if guard_info is not None:
         if guard_info["intercepted"]:
             st.error(
-                "**GATEWAY INTERCEPTED** — the draft below never reached the customer. "
+                "🚫 **GATEWAY INTERCEPTED** — the draft below never reached the customer. "
                 "They received the fallback shown on the right instead."
             )
             gl, gr = st.columns(2)
             with gl:
-                st.caption("Draft response (blocked)")
-                st.write(guard_info.get("_original", ""))
+                with st.container(border=True):
+                    st.caption("Draft response (blocked)")
+                    st.write(guard_info.get("_original", ""))
             with gr:
-                st.caption("Delivered to customer")
-                st.success(guard_info["delivered_response"])
+                with st.container(border=True):
+                    st.caption("Delivered to customer")
+                    st.success(guard_info["delivered_response"])
         else:
             st.caption("✅ Gateway checked this response and let it through unchanged.")
 
     color = VERDICT_COLOR[result["verdict"]]
+    icon = VERDICT_ICON[result["verdict"]]
     left, right = st.columns([1, 2])
     with left:
         st.markdown(
-            f'<div class="verdict" style="background:{color}">{result["verdict"]}</div>',
+            f'<div class="verdict-badge" style="background:{color}">{icon} {result["verdict"]}</div>',
             unsafe_allow_html=True,
         )
         st.metric("Weighted score", f'{result["weighted_score"]} / 100')
@@ -89,36 +120,41 @@ def render_result(result: dict, guard_info: dict | None = None) -> None:
             st.metric("Judge confidence", f'{float(result["confidence"]):.2f}')
         st.caption(f'{result["latency_ms"]} ms · {result["model"]}')
     with right:
-        st.markdown(f'**Why this verdict** — {result["verdict_reason"]}')
-        if result.get("summary"):
-            st.write(result["summary"])
-        if result.get("recommendation"):
-            st.info(f'**Recommended fix:** {result["recommendation"]}')
+        with st.container(border=True):
+            st.markdown(f'**Why this verdict** — {result["verdict_reason"]}')
+            if result.get("summary"):
+                st.write(result["summary"])
+            if result.get("recommendation"):
+                st.info(f'**Recommended fix:** {result["recommendation"]}')
 
     if result["findings"]:
-        st.subheader("Deterministic scan")
+        st.subheader("🔍 Deterministic scan")
         st.dataframe(pd.DataFrame(result["findings"]), use_container_width=True, hide_index=True)
 
-    st.subheader("Criterion breakdown")
+    st.subheader("📋 Criterion breakdown")
     for c in result["criteria"]:
-        bar = "█" * c["score"] + "░" * (5 - c["score"])
-        flag = " · critical" if c["critical"] else ""
+        bar_color = SCORE_COLOR.get(c["score"], "#6ea8fe")
+        flag = " · <b style='color:#f59e0b'>critical</b>" if c["critical"] else ""
         st.markdown(
-            f'<div class="crit"><b>{c["name"]}</b> — {bar} {c["score"]}/5 '
-            f'<span style="color:#6b7d91">(weight {c["weight"]:.0%}{flag})</span><br>'
-            f'{c["reasoning"]}'
-            + (f'<br><span class="ev">evidence: {c["evidence"]}</span>' if c["evidence"] else "")
+            f'<div class="crit-card" style="--crit-color:{bar_color}">'
+            f'<div class="crit-head">'
+            f'<span class="crit-name">{c["name"]}</span>'
+            f'<span class="crit-meta">{c["score"]}/5 · weight {c["weight"]:.0%}{flag}</span>'
+            f'</div>'
+            f'<div class="bar-track"><div class="bar-fill" style="width:{c["score"] / 5 * 100:.0f}%;background:{bar_color}"></div></div>'
+            f'<div class="crit-reason">{c["reasoning"]}</div>'
+            + (f'<span class="ev">evidence: {c["evidence"]}</span>' if c["evidence"] else "")
             + "</div>",
             unsafe_allow_html=True,
         )
 
     if result.get("consensus"):
-        st.subheader("Second judge")
+        st.subheader("🤝 Second judge")
         st.json(result["consensus"])
 
 
 tab_eval, tab_batch, tab_dash, tab_rubric = st.tabs(
-    ["Evaluate", "Batch", "Dashboard", "Rubric"]
+    ["🧪 Evaluate", "📦 Batch", "📊 Dashboard", "📐 Rubric"]
 )
 
 EXAMPLES = {
@@ -271,20 +307,25 @@ with tab_dash:
         c.metric("Blocked", int((df.verdict == "BLOCK").sum()))
         d.metric("Mean score", f'{df.weighted_score.mean():.1f}')
 
-        st.subheader("Verdict mix")
-        st.bar_chart(df.verdict.value_counts())
+        cc1, cc2 = st.columns(2)
+        with cc1:
+            with st.container(border=True):
+                st.subheader("📊 Verdict mix")
+                st.bar_chart(df.verdict.value_counts())
+        with cc2:
+            with st.container(border=True):
+                st.subheader("📈 Score trend (oldest to newest)")
+                st.line_chart(df.sort_values("id").set_index("id")["weighted_score"])
 
-        st.subheader("Score trend (oldest to newest)")
-        st.line_chart(df.sort_values("id").set_index("id")["weighted_score"])
+        with st.container(border=True):
+            st.subheader("🎯 Average score by criterion")
+            per = {}
+            for r in rows:
+                for cr in r["criteria"]:
+                    per.setdefault(cr["name"], []).append(cr["score"])
+            st.bar_chart(pd.Series({k: sum(v) / len(v) for k, v in per.items()}))
 
-        st.subheader("Average score by criterion")
-        per = {}
-        for r in rows:
-            for cr in r["criteria"]:
-                per.setdefault(cr["name"], []).append(cr["score"])
-        st.bar_chart(pd.Series({k: sum(v) / len(v) for k, v in per.items()}))
-
-        st.subheader("Failure log")
+        st.subheader("🚩 Failure log")
         failed = df[df.verdict != "PASS"][
             ["created_at", "input_type", "verdict", "weighted_score", "verdict_reason", "recommendation"]
         ]
@@ -307,8 +348,20 @@ with tab_rubric:
              "Every stored evaluation records the version it was judged under, "
              "so scores stay comparable across rubric changes.")
     for c in CRITERIA:
-        st.markdown(f"### {c['name']} — {c['weight']:.0%}"
-                    + (" · critical" if c["critical"] else ""))
-        st.write(c["description"])
-        for score in sorted(c["anchors"], reverse=True):
-            st.markdown(f"- **{score}/5** — {c['anchors'][score]}")
+        flag = " · <b style='color:#f59e0b'>critical</b>" if c["critical"] else ""
+        crit_color = "#f59e0b" if c["critical"] else "#6ea8fe"
+        anchors = "".join(
+            f'<div class="crit-reason"><b>{score}/5</b> — {c["anchors"][score]}</div>'
+            for score in sorted(c["anchors"], reverse=True)
+        )
+        st.markdown(
+            f'<div class="crit-card" style="--crit-color:{crit_color}">'
+            f'<div class="crit-head">'
+            f'<span class="crit-name">{c["name"]}</span>'
+            f'<span class="crit-meta">weight {c["weight"]:.0%}{flag}</span>'
+            f'</div>'
+            f'<div class="crit-reason" style="margin-bottom:.5rem">{c["description"]}</div>'
+            f'{anchors}'
+            f'</div>',
+            unsafe_allow_html=True,
+        )
