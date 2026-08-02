@@ -33,17 +33,85 @@ st.markdown(
     """
     <style>
       :root {
-        --bg: #0a0d12; --panel: #12161e; --panel-border: #232b38;
-        --text: #e6edf3; --muted: #8b98a8; --accent: #6ea8fe;
+        --bg: #0a0d12; --panel: #12161e; --panel-2: #161b25; --panel-border: #232b38;
+        --text: #e6edf3; --muted: #8b98a8; --accent: #6ea8fe; --radius: 12px;
       }
       .stApp { background: var(--bg); }
       h1, h2, h3 { letter-spacing: -0.02em; color: var(--text); }
+
+      /* ---- header ---- */
+      .sj-tagline { color: var(--muted); font-size: .95rem; margin-top: -.6rem; margin-bottom: .3rem; }
+      div[data-testid="stAppViewContainer"] > div:first-child { padding-top: .5rem; }
+      hr { border-color: var(--panel-border) !important; margin: 1.1rem 0 !important; }
+
+      /* ---- tabs ---- */
+      .stTabs [data-baseweb="tab-list"] { gap: .3rem; border-bottom: 1px solid var(--panel-border); }
+      .stTabs [data-baseweb="tab"] {
+        font-weight: 600; color: var(--muted); padding: .6rem 1rem;
+      }
+      .stTabs [aria-selected="true"] { color: var(--text) !important; }
+
+      /* ---- field headings: distinct "eyebrow" style, separate from body text ---- */
+      [data-testid="stWidgetLabel"] p {
+        font-size: .78rem !important; font-weight: 700 !important;
+        text-transform: uppercase; letter-spacing: .07em;
+        color: var(--accent) !important; margin-bottom: .35rem !important;
+      }
+
+      /* ---- text areas / inputs: real boxes, not flat fields ---- */
+      .stTextArea textarea, .stTextInput input {
+        background: var(--panel-2) !important;
+        border: 1.5px solid var(--panel-border) !important;
+        border-radius: var(--radius) !important;
+        color: var(--text) !important;
+        padding: .75rem .9rem !important;
+        font-size: .95rem !important;
+        transition: border-color .15s ease, box-shadow .15s ease;
+      }
+      .stTextArea textarea:focus, .stTextInput input:focus {
+        border-color: var(--accent) !important;
+        box-shadow: 0 0 0 3px rgba(110,168,254,.15) !important;
+      }
+      div[data-baseweb="select"] > div {
+        background: var(--panel-2) !important;
+        border: 1.5px solid var(--panel-border) !important;
+        border-radius: var(--radius) !important;
+      }
+      div[data-baseweb="select"]:focus-within > div { border-color: var(--accent) !important; }
+
+      /* ---- buttons ---- */
+      .stButton button {
+        border-radius: var(--radius) !important; font-weight: 700 !important;
+        padding: .6rem 1.4rem !important; border: none !important;
+      }
+      .stDownloadButton button {
+        border-radius: var(--radius) !important; font-weight: 600 !important;
+        border: 1.5px solid var(--panel-border) !important; background: var(--panel-2) !important;
+      }
+
+      /* ---- checkboxes as pill-style options ---- */
+      [data-testid="stCheckbox"] {
+        background: var(--panel); border: 1px solid var(--panel-border);
+        border-radius: var(--radius); padding: .65rem .9rem;
+      }
+
+      /* ---- metrics ---- */
       [data-testid="stMetric"] {
         background: var(--panel); border: 1px solid var(--panel-border);
-        border-radius: 10px; padding: .9rem 1rem;
+        border-radius: var(--radius); padding: .9rem 1rem;
       }
       [data-testid="stMetricLabel"] { color: var(--muted) !important; }
-      .sj-tagline { color: var(--muted); font-size: .95rem; margin-top: -.6rem; margin-bottom: .5rem; }
+
+      /* ---- bordered containers (st.container(border=True, key=...)) get a real card fill ---- */
+      .st-key-eval_form_card, .st-key-batch_form_card, .st-key-draft_card,
+      .st-key-delivered_card, .st-key-why_verdict_card, .st-key-verdict_mix_card,
+      .st-key-score_trend_card, .st-key-avg_criterion_card {
+        background: var(--panel) !important;
+        border-color: var(--panel-border) !important;
+        border-radius: var(--radius) !important;
+      }
+
+      /* ---- verdict + criterion cards ---- */
       .verdict-badge {
         display: inline-flex; align-items: center; gap: .5rem;
         padding: .65rem 1.3rem; border-radius: 8px; font-weight: 800;
@@ -53,7 +121,7 @@ st.markdown(
       .crit-card {
         background: var(--panel); border: 1px solid var(--panel-border);
         border-left: 4px solid var(--crit-color, var(--accent));
-        border-radius: 10px; padding: .9rem 1.1rem; margin-bottom: .85rem;
+        border-radius: var(--radius); padding: .9rem 1.1rem; margin-bottom: .85rem;
       }
       .crit-head { display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: .4rem; }
       .crit-name { font-weight: 700; color: var(--text); font-size: 1rem; }
@@ -65,7 +133,7 @@ st.markdown(
             color: var(--accent); background: #0e1420; padding: .4rem .65rem;
             border-radius: 6px; display: block; margin-top: .55rem; border: 1px solid var(--panel-border); }
       .sj-card { background: var(--panel); border: 1px solid var(--panel-border);
-                 border-radius: 10px; padding: 1rem 1.1rem; margin-bottom: .8rem; }
+                 border-radius: var(--radius); padding: 1rem 1.1rem; margin-bottom: .8rem; }
     </style>
     """,
     unsafe_allow_html=True,
@@ -77,6 +145,8 @@ st.markdown(
     f'rubric {RUBRIC_VERSION} &nbsp;·&nbsp; pass ≥ {PASS_THRESHOLD}, block &lt; {WARN_THRESHOLD}</div>',
     unsafe_allow_html=True,
 )
+
+st.markdown("<hr/>", unsafe_allow_html=True)
 
 if not os.getenv("GEMINI_API_KEY") and not os.getenv("GROQ_API_KEY"):
     st.warning("No GEMINI_API_KEY or GROQ_API_KEY found. Add one to a .env file in the project root, then reload.")
@@ -97,11 +167,11 @@ def render_result(result: dict, guard_info: dict | None = None) -> None:
             )
             gl, gr = st.columns(2)
             with gl:
-                with st.container(border=True):
+                with st.container(border=True, key="draft_card"):
                     st.caption("Draft response (blocked)")
                     st.write(guard_info.get("_original", ""))
             with gr:
-                with st.container(border=True):
+                with st.container(border=True, key="delivered_card"):
                     st.caption("Delivered to customer")
                     st.success(guard_info["delivered_response"])
         else:
@@ -120,7 +190,7 @@ def render_result(result: dict, guard_info: dict | None = None) -> None:
             st.metric("Judge confidence", f'{float(result["confidence"]):.2f}')
         st.caption(f'{result["latency_ms"]} ms · {result["model"]}')
     with right:
-        with st.container(border=True):
+        with st.container(border=True, key="why_verdict_card"):
             st.markdown(f'**Why this verdict** — {result["verdict_reason"]}')
             if result.get("summary"):
                 st.write(result["summary"])
@@ -193,26 +263,29 @@ EXAMPLES = {
 # ---------------------------------------------------------------- Evaluate
 with tab_eval:
     type_keys = list(INPUT_TYPES.keys())
-    input_type = st.selectbox(
-        "Input type", options=type_keys,
-        format_func=lambda k: INPUT_TYPES[k]["label"],
-        index=type_keys.index(DEFAULT_INPUT_TYPE),
-    )
-    meta = INPUT_TYPES[input_type]
-    example = EXAMPLES.get(input_type, {"query": "", "response": "", "context": "", "policy": ""})
 
-    c1, c2 = st.columns(2)
-    with c1:
-        query = st.text_area(meta["query_label"], height=110,
-                             value=example["query"], key=f"query_{input_type}")
-        response = st.text_area(meta["response_label"], height=200,
-                                value=example["response"], key=f"response_{input_type}")
-    with c2:
-        context = st.text_area(meta["context_label"], height=110,
-                               value=example["context"], key=f"context_{input_type}")
-        policy = st.text_area(meta["policy_label"], height=200,
-                              value=example["policy"], key=f"policy_{input_type}")
+    with st.container(border=True, key="eval_form_card"):
+        input_type = st.selectbox(
+            "Input type", options=type_keys,
+            format_func=lambda k: INPUT_TYPES[k]["label"],
+            index=type_keys.index(DEFAULT_INPUT_TYPE),
+        )
+        meta = INPUT_TYPES[input_type]
+        example = EXAMPLES.get(input_type, {"query": "", "response": "", "context": "", "policy": ""})
 
+        c1, c2 = st.columns(2)
+        with c1:
+            query = st.text_area(meta["query_label"], height=110,
+                                 value=example["query"], key=f"query_{input_type}")
+            response = st.text_area(meta["response_label"], height=200,
+                                    value=example["response"], key=f"response_{input_type}")
+        with c2:
+            context = st.text_area(meta["context_label"], height=110,
+                                   value=example["context"], key=f"context_{input_type}")
+            policy = st.text_area(meta["policy_label"], height=200,
+                                  value=example["policy"], key=f"policy_{input_type}")
+
+    st.write("")
     c3, c4 = st.columns(2)
     with c3:
         use_consensus = st.checkbox("Run second judge (consensus mode, needs GROQ_API_KEY)")
@@ -241,13 +314,15 @@ with tab_eval:
 
 # ------------------------------------------------------------------- Batch
 with tab_batch:
-    st.write("Upload a `.jsonl` file with one object per line: "
-             "`{\"query\": ..., \"response\": ..., \"context\": ..., \"input_type\": \"chat\"}`. "
-             "`input_type` is optional and defaults to `chat` — also accepts "
-             + ", ".join(f"`{k}`" for k in INPUT_TYPES if k != "chat") + ".")
-    uploaded = st.file_uploader("JSONL file", type=["jsonl"])
-    use_sample = st.checkbox("Use the bundled sample set instead", value=True)
+    with st.container(border=True, key="batch_form_card"):
+        st.write("Upload a `.jsonl` file with one object per line: "
+                 "`{\"query\": ..., \"response\": ..., \"context\": ..., \"input_type\": \"chat\"}`. "
+                 "`input_type` is optional and defaults to `chat` — also accepts "
+                 + ", ".join(f"`{k}`" for k in INPUT_TYPES if k != "chat") + ".")
+        uploaded = st.file_uploader("JSONL file", type=["jsonl"])
+        use_sample = st.checkbox("Use the bundled sample set instead", value=True)
 
+    st.write("")
     if st.button("Run batch"):
         if use_sample:
             sample_path = Path(__file__).parent / "samples.jsonl"
@@ -309,15 +384,15 @@ with tab_dash:
 
         cc1, cc2 = st.columns(2)
         with cc1:
-            with st.container(border=True):
+            with st.container(border=True, key="verdict_mix_card"):
                 st.subheader("📊 Verdict mix")
                 st.bar_chart(df.verdict.value_counts())
         with cc2:
-            with st.container(border=True):
+            with st.container(border=True, key="score_trend_card"):
                 st.subheader("📈 Score trend (oldest to newest)")
                 st.line_chart(df.sort_values("id").set_index("id")["weighted_score"])
 
-        with st.container(border=True):
+        with st.container(border=True, key="avg_criterion_card"):
             st.subheader("🎯 Average score by criterion")
             per = {}
             for r in rows:
